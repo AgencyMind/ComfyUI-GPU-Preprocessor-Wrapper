@@ -65,7 +65,8 @@ class MultiGPUPreprocessorWrapper:
 
 # DepthAnything V2 Wrapper
 try:
-    from comfyui_controlnet_aux import DepthAnythingV2Preprocessor
+    from comfyui_controlnet_aux import NODE_CLASS_MAPPINGS as AUX_NODE_MAPPINGS
+    DepthAnythingV2Preprocessor = AUX_NODE_MAPPINGS["DepthAnythingV2Preprocessor"]
     
     class DepthAnythingV2Wrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
@@ -80,14 +81,16 @@ try:
         
     logger.info("DepthAnythingV2Wrapper loaded successfully")
     
-except ImportError as e:
+except (ImportError, KeyError) as e:
     logger.warning(f"DepthAnythingV2Preprocessor not available: {e}")
     DepthAnythingV2Wrapper = None
 
 
 # DWPose Wrapper
 try:
-    from comfyui_controlnet_aux import DWPreprocessor
+    if 'AUX_NODE_MAPPINGS' not in locals():
+        from comfyui_controlnet_aux import NODE_CLASS_MAPPINGS as AUX_NODE_MAPPINGS
+    DWPreprocessor = AUX_NODE_MAPPINGS["DWPreprocessor"]
     
     class DWPreprocessorWrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
@@ -102,14 +105,16 @@ try:
         
     logger.info("DWPreprocessorWrapper loaded successfully")
     
-except ImportError as e:
+except (ImportError, KeyError) as e:
     logger.warning(f"DWPreprocessor not available: {e}")
     DWPreprocessorWrapper = None
 
 
 # Canny Edge Wrapper
 try:
-    from comfyui_controlnet_aux import CannyEdgePreprocessor
+    if 'AUX_NODE_MAPPINGS' not in locals():
+        from comfyui_controlnet_aux import NODE_CLASS_MAPPINGS as AUX_NODE_MAPPINGS
+    CannyEdgePreprocessor = AUX_NODE_MAPPINGS["CannyEdgePreprocessor"]
     
     class CannyEdgePreprocessorWrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
@@ -124,14 +129,16 @@ try:
         
     logger.info("CannyEdgePreprocessorWrapper loaded successfully")
     
-except ImportError as e:
+except (ImportError, KeyError) as e:
     logger.warning(f"CannyEdgePreprocessor not available: {e}")
     CannyEdgePreprocessorWrapper = None
 
 
 # OpenPose Wrapper
 try:
-    from comfyui_controlnet_aux import OpenposePreprocessor
+    if 'AUX_NODE_MAPPINGS' not in locals():
+        from comfyui_controlnet_aux import NODE_CLASS_MAPPINGS as AUX_NODE_MAPPINGS
+    OpenposePreprocessor = AUX_NODE_MAPPINGS["OpenposePreprocessor"]
     
     class OpenposePreprocessorWrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
@@ -146,14 +153,16 @@ try:
         
     logger.info("OpenposePreprocessorWrapper loaded successfully")
     
-except ImportError as e:
+except (ImportError, KeyError) as e:
     logger.warning(f"OpenposePreprocessor not available: {e}")
     OpenposePreprocessorWrapper = None
 
 
 # Midas Depth Map Wrapper
 try:
-    from comfyui_controlnet_aux import MidasDepthMapPreprocessor
+    if 'AUX_NODE_MAPPINGS' not in locals():
+        from comfyui_controlnet_aux import NODE_CLASS_MAPPINGS as AUX_NODE_MAPPINGS
+    MidasDepthMapPreprocessor = AUX_NODE_MAPPINGS["MiDaS-DepthMapPreprocessor"]
     
     class MidasDepthMapWrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
@@ -168,7 +177,7 @@ try:
         
     logger.info("MidasDepthMapWrapper loaded successfully")
     
-except ImportError as e:
+except (ImportError, KeyError) as e:
     logger.warning(f"MidasDepthMapPreprocessor not available: {e}")
     MidasDepthMapWrapper = None
 
