@@ -47,9 +47,10 @@ class MultiGPUPreprocessorWrapper:
             # Temporarily override with consistent device
             model_management.get_torch_device = lambda: torch.device(self.target_device)
             
-            # Create and execute original preprocessor
+            # Create and execute original preprocessor using its specific function name
             preprocessor = self.preprocessor_class()
-            result = preprocessor.execute(**kwargs)
+            function_name = getattr(self.preprocessor_class, 'FUNCTION', 'execute')
+            result = getattr(preprocessor, function_name)(**kwargs)
             return result
             
         except Exception as e:
