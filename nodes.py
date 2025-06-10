@@ -65,7 +65,7 @@ class MultiGPUPreprocessorWrapper:
 
 # DepthAnything V2 Wrapper
 try:
-    from comfyui_controlnet_aux.node_wrappers.depth_anything_v2 import DepthAnythingV2Preprocessor
+    from comfyui_controlnet_aux import DepthAnythingV2Preprocessor
     
     class DepthAnythingV2Wrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
@@ -87,7 +87,7 @@ except ImportError as e:
 
 # DWPose Wrapper
 try:
-    from comfyui_controlnet_aux.node_wrappers.dwpose import DWPreprocessor
+    from comfyui_controlnet_aux import DWPreprocessor
     
     class DWPreprocessorWrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
@@ -109,7 +109,7 @@ except ImportError as e:
 
 # Canny Edge Wrapper
 try:
-    from comfyui_controlnet_aux.node_wrappers.canny import CannyEdgePreprocessor
+    from comfyui_controlnet_aux import CannyEdgePreprocessor
     
     class CannyEdgePreprocessorWrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
@@ -131,7 +131,7 @@ except ImportError as e:
 
 # OpenPose Wrapper
 try:
-    from comfyui_controlnet_aux.node_wrappers.openpose import OpenposePreprocessor
+    from comfyui_controlnet_aux import OpenposePreprocessor
     
     class OpenposePreprocessorWrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
@@ -153,7 +153,7 @@ except ImportError as e:
 
 # Midas Depth Map Wrapper
 try:
-    from comfyui_controlnet_aux.node_wrappers.midas import MidasDepthMapPreprocessor
+    from comfyui_controlnet_aux import MidasDepthMapPreprocessor
     
     class MidasDepthMapWrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
