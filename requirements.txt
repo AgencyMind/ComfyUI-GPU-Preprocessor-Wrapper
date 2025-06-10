@@ -1,0 +1,2 @@
+# No additional dependencies required
+# This extension only wraps existing ComfyUI functionality
