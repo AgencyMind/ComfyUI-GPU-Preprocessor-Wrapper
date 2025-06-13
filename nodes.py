@@ -14,11 +14,11 @@ class MultiGPUPreprocessorWrapper:
     but ComfyUI-MultiGPU monkey-patches this function with dynamic device assignment, causing model 
     components to split across devices and trigger "Expected all tensors to be on the same device" errors.
     
-    The solution: Temporarily override get_torch_device() to return consistent device (cuda:0) during
+    The solution: Temporarily override get_torch_device() to return consistent device (cuda:1) during
     model loading, then restore normal MultiGPU behavior.
     """
     
-    def __init__(self, preprocessor_class, target_device='cuda:0'):
+    def __init__(self, preprocessor_class, target_device='cuda:1'):
         self.preprocessor_class = preprocessor_class
         self.target_device = target_device
         
@@ -71,7 +71,7 @@ try:
     
     class DepthAnythingV2Wrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
-            super().__init__(DepthAnythingV2Preprocessor, 'cuda:0')
+            super().__init__(DepthAnythingV2Preprocessor, 'cuda:1')
         
         @classmethod
         def INPUT_TYPES(cls):
@@ -95,7 +95,7 @@ try:
     
     class DWPreprocessorWrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
-            super().__init__(DWPreprocessor, 'cuda:0')
+            super().__init__(DWPreprocessor, 'cuda:1')
         
         @classmethod
         def INPUT_TYPES(cls):
@@ -119,7 +119,7 @@ try:
     
     class CannyEdgePreprocessorWrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
-            super().__init__(CannyEdgePreprocessor, 'cuda:0')
+            super().__init__(CannyEdgePreprocessor, 'cuda:1')
         
         @classmethod
         def INPUT_TYPES(cls):
@@ -143,7 +143,7 @@ try:
     
     class OpenposePreprocessorWrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
-            super().__init__(OpenposePreprocessor, 'cuda:0')
+            super().__init__(OpenposePreprocessor, 'cuda:1')
         
         @classmethod
         def INPUT_TYPES(cls):
@@ -167,7 +167,7 @@ try:
     
     class MidasDepthMapWrapper(MultiGPUPreprocessorWrapper):
         def __init__(self):
-            super().__init__(MidasDepthMapPreprocessor, 'cuda:0')
+            super().__init__(MidasDepthMapPreprocessor, 'cuda:1')
         
         @classmethod
         def INPUT_TYPES(cls):
