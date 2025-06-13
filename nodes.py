@@ -8,20 +8,19 @@ logger = logging.getLogger(__name__)
 class MultiGPUPreprocessorWrapper:
     """
     Base wrapper class that temporarily overrides device placement during preprocessor model loading
-    AND execution to prevent multi-GPU device conflicts in ControlNet preprocessors.
+    to prevent multi-GPU device conflicts in ControlNet preprocessors.
     
     The problem: Preprocessors auto-download models and load them using model_management.get_torch_device(),
     but ComfyUI-MultiGPU monkey-patches this function with dynamic device assignment, causing model 
     components to split across devices and trigger "Expected all tensors to be on the same device" errors.
     
-    The solution: Override get_torch_device() to return consistent device (cuda:0) during
-    the ENTIRE preprocessor execution (loading + inference), then restore normal MultiGPU behavior.
+    The solution: Temporarily override get_torch_device() to return consistent device (cuda:0) during
+    model loading, then restore normal MultiGPU behavior.
     """
     
     def __init__(self, preprocessor_class, target_device='cuda:0'):
         self.preprocessor_class = preprocessor_class
         self.target_device = target_device
-        self._preprocessor_instance = None
         
     @classmethod
     def INPUT_TYPES(cls):
@@ -37,58 +36,25 @@ class MultiGPUPreprocessorWrapper:
     FUNCTION = "execute"
     CATEGORY = "preprocessors/gpu_wrapper"
     
-    def _ensure_tensors_on_device(self, obj, device):
-        """
-        Recursively move tensors in nested data structures to the specified device.
-        """
-        if isinstance(obj, torch.Tensor):
-            return obj.to(device)
-        elif isinstance(obj, dict):
-            return {k: self._ensure_tensors_on_device(v, device) for k, v in obj.items()}
-        elif isinstance(obj, (list, tuple)):
-            return type(obj)(self._ensure_tensors_on_device(item, device) for item in obj)
-        else:
-            return obj
-    
     def execute(self, **kwargs):
         """
-        Execute preprocessor with extended device override to prevent multi-GPU conflicts.
-        Now covers both model loading AND inference execution.
+        Execute preprocessor with temporary device override to prevent multi-GPU conflicts.
         """
         # Critical: Save original function
         original_get_device = model_management.get_torch_device
         
         try:
-            # Force clear any cached models that might have wrong device assignments
-            if hasattr(model_management, 'soft_empty_cache'):
-                model_management.soft_empty_cache()
+            # Temporarily override with consistent device
+            model_management.get_torch_device = lambda: torch.device(self.target_device)
             
-            # Clear preprocessor instance cache to force fresh loading
-            self._preprocessor_instance = None
-            # Override with consistent device for ENTIRE execution
-            target_torch_device = torch.device(self.target_device)
-            model_management.get_torch_device = lambda: target_torch_device
-            
-            # Ensure all input tensors are on the target device
-            kwargs = self._ensure_tensors_on_device(kwargs, target_torch_device)
-            
-            # Create preprocessor instance if not cached, or reuse existing
-            if self._preprocessor_instance is None:
-                self._preprocessor_instance = self.preprocessor_class()
-            
-            # Execute with consistent device context
+            # Create and execute original preprocessor using its specific function name
+            preprocessor = self.preprocessor_class()
             function_name = getattr(self.preprocessor_class, 'FUNCTION', 'execute')
-            result = getattr(self._preprocessor_instance, function_name)(**kwargs)
-            
-            # Ensure output tensors are properly placed
-            result = self._ensure_tensors_on_device(result, target_torch_device)
-            
+            result = getattr(preprocessor, function_name)(**kwargs)
             return result
             
         except Exception as e:
             logger.error(f"Error in MultiGPUPreprocessorWrapper execution: {e}")
-            logger.error(f"Target device: {self.target_device}")
-            logger.error(f"Input tensor devices: {[v.device if isinstance(v, torch.Tensor) else type(v) for v in kwargs.values()]}")
             raise
             
         finally:
