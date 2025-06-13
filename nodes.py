@@ -5,52 +5,75 @@ import logging
 # Set up logging
 logger = logging.getLogger(__name__)
 
+def get_device_list():
+    """Get list of available devices"""
+    devices = ["cpu"]
+    if torch.cuda.is_available():
+        devices.extend([f"cuda:{i}" for i in range(torch.cuda.device_count())])
+    return devices
+
 class MultiGPUPreprocessorWrapper:
     """
     Base wrapper class that temporarily overrides device placement during preprocessor model loading
-    to prevent multi-GPU device conflicts in ControlNet preprocessors.
-    
-    The problem: Preprocessors auto-download models and load them using model_management.get_torch_device(),
-    but ComfyUI-MultiGPU monkey-patches this function with dynamic device assignment, causing model 
-    components to split across devices and trigger "Expected all tensors to be on the same device" errors.
-    
-    The solution: Temporarily override get_torch_device() to return consistent device (cuda:1) during
-    model loading, then restore normal MultiGPU behavior.
+    and ensures input tensors are on the correct device to prevent multi-GPU device conflicts.
     """
     
-    def __init__(self, preprocessor_class, target_device='cuda:1'):
+    def __init__(self, preprocessor_class):
         self.preprocessor_class = preprocessor_class
-        self.target_device = target_device
         
     @classmethod
     def INPUT_TYPES(cls):
-        # Must dynamically return the wrapped preprocessor's INPUT_TYPES
-        # This will be overridden in specific wrapper subclasses
+        # Get base INPUT_TYPES from wrapped preprocessor
         if hasattr(cls, 'preprocessor_class'):
-            return cls.preprocessor_class.INPUT_TYPES()
+            base_inputs = cls.preprocessor_class.INPUT_TYPES()
         else:
-            # Fallback for base class - should not be used directly
-            return {"required": {}}
+            base_inputs = {"required": {}}
+        
+        # Add device parameter
+        devices = get_device_list()
+        default_device = "cuda:0" if "cuda:0" in devices else (devices[1] if len(devices) > 1 else devices[0])
+        
+        # Ensure optional section exists
+        if "optional" not in base_inputs:
+            base_inputs["optional"] = {}
+        
+        base_inputs["optional"]["device"] = (devices, {"default": default_device})
+        
+        return base_inputs
     
     RETURN_TYPES = ("IMAGE",)  # Most ControlNet preprocessors return IMAGE
     FUNCTION = "execute"
     CATEGORY = "preprocessors/gpu_wrapper"
     
-    def execute(self, **kwargs):
+    def execute(self, device="cuda:1", **kwargs):
         """
-        Execute preprocessor with temporary device override to prevent multi-GPU conflicts.
+        Execute preprocessor with device override and input tensor movement.
         """
+        target_device = torch.device(device)
+        
+        # Move input tensors to target device
+        moved_kwargs = {}
+        for key, value in kwargs.items():
+            if isinstance(value, torch.Tensor):
+                moved_kwargs[key] = value.to(target_device)
+                logger.debug(f"Moved input tensor '{key}' from {value.device} to {target_device}")
+            else:
+                moved_kwargs[key] = value
+        
         # Critical: Save original function
         original_get_device = model_management.get_torch_device
         
         try:
             # Temporarily override with consistent device
-            model_management.get_torch_device = lambda: torch.device(self.target_device)
+            model_management.get_torch_device = lambda: target_device
+            logger.debug(f"Temporarily overriding get_torch_device() to return: {target_device}")
             
             # Create and execute original preprocessor using its specific function name
             preprocessor = self.preprocessor_class()
             function_name = getattr(self.preprocessor_class, 'FUNCTION', 'execute')
-            result = getattr(preprocessor, function_name)(**kwargs)
+            result = getattr(preprocessor, function_name)(**moved_kwargs)
+            
+            logger.debug(f"Successfully executed {self.preprocessor_class.__name__} on {target_device}")
             return result
             
         except Exception as e:
@@ -60,6 +83,7 @@ class MultiGPUPreprocessorWrapper:
         finally:
             # ALWAYS restore original function, even on exception
             model_management.get_torch_device = original_get_device
+            logger.debug("Restored original get_torch_device()")
 
 
 # Import and create specific wrapper instances with error handling
@@ -70,12 +94,14 @@ try:
     DepthAnythingV2Preprocessor = AUX_NODE_MAPPINGS["DepthAnythingV2Preprocessor"]
     
     class DepthAnythingV2Wrapper(MultiGPUPreprocessorWrapper):
+        preprocessor_class = DepthAnythingV2Preprocessor
+        
         def __init__(self):
-            super().__init__(DepthAnythingV2Preprocessor, 'cuda:1')
+            super().__init__(DepthAnythingV2Preprocessor)
         
         @classmethod
         def INPUT_TYPES(cls):
-            return DepthAnythingV2Preprocessor.INPUT_TYPES()
+            return super().INPUT_TYPES()
             
         RETURN_TYPES = DepthAnythingV2Preprocessor.RETURN_TYPES
         CATEGORY = "preprocessors/gpu_wrapper"
@@ -94,12 +120,14 @@ try:
     DWPreprocessor = AUX_NODE_MAPPINGS["DWPreprocessor"]
     
     class DWPreprocessorWrapper(MultiGPUPreprocessorWrapper):
+        preprocessor_class = DWPreprocessor
+        
         def __init__(self):
-            super().__init__(DWPreprocessor, 'cuda:1')
+            super().__init__(DWPreprocessor)
         
         @classmethod
         def INPUT_TYPES(cls):
-            return DWPreprocessor.INPUT_TYPES()
+            return super().INPUT_TYPES()
             
         RETURN_TYPES = DWPreprocessor.RETURN_TYPES
         CATEGORY = "preprocessors/gpu_wrapper"
@@ -118,12 +146,14 @@ try:
     CannyEdgePreprocessor = AUX_NODE_MAPPINGS["CannyEdgePreprocessor"]
     
     class CannyEdgePreprocessorWrapper(MultiGPUPreprocessorWrapper):
+        preprocessor_class = CannyEdgePreprocessor
+        
         def __init__(self):
-            super().__init__(CannyEdgePreprocessor, 'cuda:1')
+            super().__init__(CannyEdgePreprocessor)
         
         @classmethod
         def INPUT_TYPES(cls):
-            return CannyEdgePreprocessor.INPUT_TYPES()
+            return super().INPUT_TYPES()
             
         RETURN_TYPES = CannyEdgePreprocessor.RETURN_TYPES
         CATEGORY = "preprocessors/gpu_wrapper"
@@ -142,12 +172,14 @@ try:
     OpenposePreprocessor = AUX_NODE_MAPPINGS["OpenposePreprocessor"]
     
     class OpenposePreprocessorWrapper(MultiGPUPreprocessorWrapper):
+        preprocessor_class = OpenposePreprocessor
+        
         def __init__(self):
-            super().__init__(OpenposePreprocessor, 'cuda:1')
+            super().__init__(OpenposePreprocessor)
         
         @classmethod
         def INPUT_TYPES(cls):
-            return OpenposePreprocessor.INPUT_TYPES()
+            return super().INPUT_TYPES()
             
         RETURN_TYPES = OpenposePreprocessor.RETURN_TYPES
         CATEGORY = "preprocessors/gpu_wrapper"
@@ -166,12 +198,14 @@ try:
     MidasDepthMapPreprocessor = AUX_NODE_MAPPINGS["MiDaS-DepthMapPreprocessor"]
     
     class MidasDepthMapWrapper(MultiGPUPreprocessorWrapper):
+        preprocessor_class = MidasDepthMapPreprocessor
+        
         def __init__(self):
-            super().__init__(MidasDepthMapPreprocessor, 'cuda:1')
+            super().__init__(MidasDepthMapPreprocessor)
         
         @classmethod
         def INPUT_TYPES(cls):
-            return MidasDepthMapPreprocessor.INPUT_TYPES()
+            return super().INPUT_TYPES()
             
         RETURN_TYPES = MidasDepthMapPreprocessor.RETURN_TYPES
         CATEGORY = "preprocessors/gpu_wrapper"
